@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ingetrazo_kitchen_maker",
+    "name": "Kitchen Maker",
+    "version": "1.0.2",
+    "tag": "ingetrazo_kitchen_maker-v1.0.2",
+    "bytes": 37444,
+    "sha256": "eb2ccb24e0d73da31c8fe2c8e17bd2f2762f0f36bc1f8c330466a4bc52e882e0",
+    "download": "https://raw.githubusercontent.com/aashishzharbade-arch/ingetrazo-extensions/ingetrazo_kitchen_maker-v1.0.2/ingetrazo_kitchen_maker/ingetrazo_kitchen_maker.py",
+    "static_review_notes": {
+      "ingetrazo_kitchen_maker": []
+    }
+  },
+  {
+    "id": "make_stair",
+    "name": "Stair Maker with Railings",
+    "version": "1.1.0",
+    "tag": "make_stair-v1.1.0",
+    "bytes": 671153,
+    "sha256": "202f96b75c1fd28ae8212e0b0d2409f2c5432fd9f3f53120dc1f5fce71f2d0f2",
+    "download": "https://raw.githubusercontent.com/aashishzharbade-arch/ingetrazo-extensions/make_stair-v1.1.0/make_stair/make_stair.py",
+    "static_review_notes": {
+      "make_stair": []
+    }
+  },
+  {
+    "id": "ingetrazo_bevel",
+    "name": "Bevel",
+    "version": "1.0.2",
+    "tag": "ingetrazo_bevel-v1.0.2",
+    "bytes": 1215187,
+    "sha256": "bf0a1b7d0160673f5a1891ba62318102eae18cd59eb9c17741dc30e59ca8dee3",
+    "download": "https://raw.githubusercontent.com/aashishzharbade-arch/ingetrazo-extensions/ingetrazo_bevel-v1.0.2/ingetrazo_bevel/ingetrazo_bevel.py",
+    "static_review_notes": {
+      "ingetrazo_bevel": []
+    }
+  }
+]
