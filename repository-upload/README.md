@@ -1,4 +1,4 @@
-# IngeTrazo Extensions
+# Extensions for IngeTrazo
 
 Four Python extensions for IngeTrazo 0.5.7, licensed GPL-3.0-or-later.
 
