@@ -30,16 +30,34 @@ from views.viewport import Viewport
 DISPLAY_NAME = "IngeTrazo MultiView"
 TOOLBAR_NAME = "ingetrazo_multiview_toolbar"
 KEY = "ingetrazo_multiview"
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 
-LOG_PATH = Path(os.environ.get("LOCALAPPDATA", ".")) / "IngeTrazo" / "multiview.log"
+# Diagnostic log. Errors are always written; set INGETRAZO_MULTIVIEW_DEBUG=1
+# to log every event too. It lives in the per-user application data folder on
+# every system (LOCALAPPDATA only exists on Windows: elsewhere the old path
+# fell back to the folder IngeTrazo was started from) and is capped in size.
+_DEBUG = os.environ.get("INGETRAZO_MULTIVIEW_DEBUG", "") == "1"
+_LOG_MAX_BYTES = 256 * 1024
+_ERROR_WORDS = ("ERROR", "Error", "CRITICAL", "Failed", "Traceback")
+
+
+def _log_path() -> Path:
+    from PySide6.QtCore import QStandardPaths
+    base = QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)
+    return Path(base or Path.home()) / "multiview.log"
+
 
 def _log(msg: str):
+    if not _DEBUG and not any(w in msg for w in _ERROR_WORDS):
+        return
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp}] {msg}\n"
     try:
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(LOG_PATH, "a", encoding="utf-8") as f:
+        path = _log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and path.stat().st_size > _LOG_MAX_BYTES:
+            path.replace(path.with_suffix(".log.old"))
+        with open(path, "a", encoding="utf-8") as f:
             f.write(line)
     except Exception:
         pass
