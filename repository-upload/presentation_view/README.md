@@ -6,9 +6,7 @@ One free, open-source IngeTrazo plugin with a draggable, floatable toolbar and t
 2. **Axis visible**: checked means the editor drawing axes are visible. Click to hide/show them; preference is remembered. Snapping remains available. Presentation mode always hides drawing axes; its 3D Gizmo is a separate camera control.
 3. **FPS meter**: toggle FPS, frame intervals, worst interval, process CPU and history. Displayed top left in the editor and, when enabled, the presentation window. Off by default, with no continuous-redraw stress test enabled. Reads idle when no frames arrive; paint-event intervals are not GPU render timings.
 
-## Install or replace previous versions
-Close IngeTrazo. Move the old `ingetrazo_presenter` plugin folder and standalone `axis_visibility.py` and `fps_meter.py` plugins out of the plugins directory (keep backups elsewhere). They are replaced by this single package; leaving them installed would create duplicate controls.
-
+## Install
 Extract this ZIP and copy only the `presentation_view` folder into the folder opened by **Extensions > Open plugins folder**. On Windows this is normally `%APPDATA%\ingetrazo\plugins`. Restart IngeTrazo.
 
 Drag the toolbar grip to any editor edge to dock, or away from an edge to float. Restore a hidden toolbar with **Extensions > Show Presentation view toolbar**. Its stable name lets IngeTrazo save its layout. Commands are also under **Extensions > Presentation view**. The direct Presentation viewer menu action and Ctrl+Alt+P shortcut remain available.
