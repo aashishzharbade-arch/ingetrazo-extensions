@@ -30,7 +30,7 @@ from views.viewport import Viewport
 DISPLAY_NAME = "IngeTrazo MultiView"
 TOOLBAR_NAME = "ingetrazo_multiview_toolbar"
 KEY = "ingetrazo_multiview"
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 
 # Diagnostic log. Errors are always written; set INGETRAZO_MULTIVIEW_DEBUG=1
 # to log every event too. It lives in the per-user application data folder on
@@ -596,20 +596,24 @@ class QuadCell(QFrame):
         colors = self._colors or get_theme_colors(self)
         if active:
             # Active viewport gets IngeTrazo orange highlight border
-            self.setStyleSheet(f"""
+            stylesheet = f"""
                 QuadCell {{
                     border: 2px solid {colors["cell_border_active"]};
                     background-color: {colors["cell_bg"]};
                 }}
-            """)
+            """
         else:
             # Inactive border matches theme (light grey in light mode, dark grey in dark mode)
-            self.setStyleSheet(f"""
+            stylesheet = f"""
                 QuadCell {{
                     border: 1px solid {colors["cell_border_inactive"]};
                     background-color: {colors["cell_bg"]};
                 }}
-            """)
+            """
+        # Skip Qt's style/palette propagation when the appearance is unchanged.
+        # Compare the CSS so theme changes still refresh an unchanged active state.
+        if self.styleSheet() != stylesheet:
+            self.setStyleSheet(stylesheet)
 
 
 class ViewportInputFilter(QObject):
@@ -791,7 +795,8 @@ class MultiViewContainer(QWidget):
 
     def changeEvent(self, event):
         super().changeEvent(event)
-        if event.type() in (QEvent.PaletteChange, QEvent.ApplicationPaletteChange, QEvent.ThemeChange):
+        # setStyleSheet emits local PaletteChange events; responding would recurse.
+        if event.type() in (QEvent.ApplicationPaletteChange, QEvent.ThemeChange):
             self.apply_theme()
 
     def resizeEvent(self, event):
@@ -811,6 +816,8 @@ class MultiViewContainer(QWidget):
             self._syncing_splitters = False
 
     def set_active_cell(self, cell: QuadCell):
+        if cell is self.active_cell:
+            return
         self.active_cell = cell
         for c in self.all_cells:
             c.set_active(c is cell)
@@ -953,7 +960,7 @@ class MultiViewController(QObject):
     def eventFilter(self, watched, event):
         """Catches runtime theme / palette flips in IngeTrazo."""
         if watched is self.window and event.type() in (
-            QEvent.PaletteChange, QEvent.ApplicationPaletteChange, QEvent.ThemeChange
+            QEvent.ApplicationPaletteChange, QEvent.ThemeChange
         ):
             _log("Theme change event detected! Refreshing theme styles...")
             if self.container is not None:
