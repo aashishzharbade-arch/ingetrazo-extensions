@@ -30,7 +30,7 @@ from views.viewport import Viewport
 DISPLAY_NAME = "IngeTrazo MultiView"
 TOOLBAR_NAME = "ingetrazo_multiview_toolbar"
 KEY = "ingetrazo_multiview"
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 
 # Diagnostic log. Errors are always written; set INGETRAZO_MULTIVIEW_DEBUG=1
 # to log every event too. It lives in the per-user application data folder on
@@ -942,7 +942,7 @@ class MultiViewController(QObject):
         self._build_native_toolbar()
 
         # Hook set_nav_mode so Pan tool, Orbit, and Zoom synchronize across all viewports
-        self._hook_nav_mode()
+        self._hook_nav_mode(self.main_vp)
 
         # Global event filter for Double-Space, F4, and Theme Changes
         self._space_filter = DoubleSpaceFilter(self)
@@ -957,6 +957,16 @@ class MultiViewController(QObject):
         except Exception:
             _log(f"Failed to hook on_document_changed: {traceback.format_exc()}")
 
+        # IngeTrazo 0.5.12+ opens several projects in tabs, each with its own
+        # viewport; app.viewport is always the one in front. Older versions
+        # have a single viewport and no on_document_closed.
+        self._project_tabs = hasattr(self.app, "on_document_closed")
+        if self._project_tabs:
+            try:
+                self.app.on_document_closed(self._on_doc_closed)
+            except Exception:
+                _log(f"Failed to hook on_document_closed: {traceback.format_exc()}")
+
     def eventFilter(self, watched, event):
         """Catches runtime theme / palette flips in IngeTrazo."""
         if watched is self.window and event.type() in (
@@ -968,17 +978,20 @@ class MultiViewController(QObject):
             self.update_toolbar_state()
         return False
 
-    def _hook_nav_mode(self):
+    def _hook_nav_mode(self, main_vp):
         """Broadcasts set_nav_mode (Pan, Orbit, Zoom) to all viewports when selected from toolbars/menus."""
+        if getattr(main_vp, "_multiview_nav_hooked", False):
+            return
         try:
-            orig_set_nav_mode = self.main_vp.set_nav_mode
+            orig_set_nav_mode = main_vp.set_nav_mode
             def synced_set_nav_mode(mode: str | None):
                 orig_set_nav_mode(mode)
-                if self.is_active and self.container is not None:
+                if self.is_active and self.container is not None and main_vp is self.main_vp:
                     for c in self.container.all_cells:
                         if c.viewport is not self.main_vp:
                             c.viewport.set_nav_mode(mode)
-            self.main_vp.set_nav_mode = synced_set_nav_mode
+            main_vp.set_nav_mode = synced_set_nav_mode
+            main_vp._multiview_nav_hooked = True
             _log("Successfully hooked main_vp.set_nav_mode for universal Pan/Nav sync.")
         except Exception:
             _log(f"Failed to hook nav mode: {traceback.format_exc()}")
@@ -1138,7 +1151,7 @@ class MultiViewController(QObject):
             name = names.get(view_key, view_key.capitalize())
             cell._apply_view(name, view_key, perspective)
         else:
-            vp = self.main_vp
+            vp = self.app.viewport
             vp.camera.perspective = perspective
             vp.camera.set_view(view_key)
             vp.update()
@@ -1147,7 +1160,8 @@ class MultiViewController(QObject):
         """Frames geometry across all active viewports."""
         _log("Zoom Extents All triggered.")
         try:
-            bounds = self.main_vp.scene.bounds()
+            main_vp = self.main_vp if self.is_active else self.app.viewport
+            bounds = main_vp.scene.bounds()
             figs = getattr(self.window, "_figure_bounds", lambda: None)()
             if figs is not None:
                 lo, hi = figs
@@ -1157,7 +1171,7 @@ class MultiViewController(QObject):
                 bounds = (lo, hi)
 
             if bounds[0] is not None:
-                targets = [self.main_vp]
+                targets = [main_vp]
                 if self.is_active and self.container is not None:
                     targets = [c.viewport for c in self.container.all_cells if c.isVisible()]
                 for vp in targets:
@@ -1203,6 +1217,13 @@ class MultiViewController(QObject):
 
     def _on_doc_changed(self):
         """Called whenever the document changes in IngeTrazo."""
+        if self.main_vp is None:
+            return
+        if self.is_active and self._project_tabs and self.app.viewport is not self.main_vp:
+            # Another project tab came to the front: give the grid's viewport
+            # back to its own project. Toggle again to use MultiView here.
+            self.deactivate()
+            return
         for vp in (self.top_vp, self.front_vp, self.right_vp):
             if vp is not None and (vp.scene is not self.main_vp.scene or
                                    vp.history is not self.main_vp.history):
@@ -1212,6 +1233,38 @@ class MultiViewController(QObject):
                 vp.last_snap = None
         if self.is_active and self.container is not None:
             self.container.update_all_viewports()
+
+    def _on_doc_closed(self, scene):
+        """A project tab is being closed; forget the views kept for it."""
+        if self.main_vp is None or scene is not self.main_vp.scene:
+            return
+        _log("The project MultiView was built for is closing; dropping its views.")
+        if self.is_active:
+            # Normally already off (its tab left the front first). The app
+            # removes the grid from its stack itself: only let go of it here.
+            if self.container is not None and self.container.cell_persp.layout():
+                self.container.cell_persp.layout().removeWidget(self.main_vp)
+            self.main_vp.setParent(self.window)
+            self.main_vp.hide()
+            self.is_active = False
+            self.update_toolbar_state()
+        self._drop_views()
+        self.main_vp = None
+
+    def _drop_views(self):
+        """Delete the grid and the three secondary views built for main_vp."""
+        if self.container is not None:
+            for c in self.container.all_cells:
+                if c.viewport is not self.main_vp:
+                    try:
+                        c.viewport.release_gl_textures()
+                    except Exception:
+                        pass
+                c.viewport.removeEventFilter(c.filter)
+            self.container.hide()
+            self.container.deleteLater()
+        self.container = None
+        self.top_vp = self.front_vp = self.right_vp = None
 
     def _on_sub_version_changed(self, sender_vp: Viewport):
         """Called if a tool in a secondary viewport modifies the scene."""
@@ -1255,6 +1308,13 @@ class MultiViewController(QObject):
     def activate(self):
         if self.is_active:
             return
+        # The viewport in front: with project tabs it may not be the one the
+        # grid was built for, so rebuild the secondary views on its scene.
+        vp = self.app.viewport
+        if vp is not self.main_vp:
+            self._drop_views()
+            self.main_vp = vp
+            self._hook_nav_mode(vp)
         if self.window.centralWidget() is not self.main_vp:
             self.main_vp.flash_status("Close the current extension workspace before enabling MultiView", 4000)
             return

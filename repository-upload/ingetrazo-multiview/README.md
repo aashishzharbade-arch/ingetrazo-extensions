@@ -1,10 +1,19 @@
 # IngeTrazo MultiView
 
-**Version:** 1.0.6  
+**Version:** 1.0.7  
 **Target:** IngeTrazo 0.5.x (API v2)  
 **License:** GPL-3.0-or-later  
 
 **IngeTrazo MultiView** brings Rhino-style synchronized 4-viewport layout to IngeTrazo, featuring Top, Perspective, Front, and Right views in an adjustable 2×2 grid with Double-Spacebar enlarge/restore and a native dockable & floatable Qt toolbar.
+
+## 1.0.7 project tabs
+
+- Works with the project tabs of IngeTrazo 0.5.12: MultiView now uses the
+  viewport of the project in front when you toggle it (it used to keep the
+  first tab's), and builds its three secondary views on that project.
+- Switching to another tab, or closing the tab, turns MultiView off and gives
+  the viewport back to its project. Toggle again (F4) in the new tab.
+- IngeTrazo 0.5.11 and older (no tabs) behave exactly as before.
 
 ## 1.0.6 performance fix
 
@@ -98,7 +107,7 @@ IngeTrazo after replacing the plugin to clear the old containers and filters.
 ## Installation
 
 ### Method 1: Automatic (1-Click on Windows)
-1. Close IngeTrazo and extract the v1.0.6 release archive.
+1. Close IngeTrazo and extract the v1.0.7 release archive.
 2. Double-click `install.bat`.
 3. Launch or restart **IngeTrazo**.
 
