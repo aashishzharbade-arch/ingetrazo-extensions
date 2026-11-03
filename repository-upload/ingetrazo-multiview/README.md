@@ -1,10 +1,36 @@
 # IngeTrazo MultiView
 
-**Version:** 1.0.6  
-**Target:** IngeTrazo 0.5.x (API v2)  
+**Version:** 1.0.7  
+**Target:** IngeTrazo 0.5.x / 0.6.0 (API v2)  
 **License:** GPL-3.0-or-later  
 
 **IngeTrazo MultiView** brings Rhino-style synchronized 4-viewport layout to IngeTrazo, featuring Top, Perspective, Front, and Right views in an adjustable 2×2 grid with Double-Spacebar enlarge/restore and a native dockable & floatable Qt toolbar.
+
+## 1.0.7 project-tab support
+
+- Resolve the active project's `app.viewport` when opening MultiView. Rebuild
+  the grid, input filters, and secondary views when the viewport, scene, or
+  undo history changes.
+- Turn MultiView off on document changes (including tab switches in 0.6.0)
+  and document closes. Enable it again with F4 in the selected tab.
+- Handle close notifications after Qt has already deleted the project's widgets.
+- Move navigation synchronization to the active viewport and restore the
+  original navigation method when MultiView closes.
+- Make single-view camera presets and Zoom Extents follow the active tab.
+- Retain the host's central-widget compatibility API and support older hosts
+  without `on_document_closed`.
+
+Validation: 22 offscreen Qt regression checks passed on Windows with PySide6
+6.12.0: 14 document/tab lifecycle checks and the 8 existing theme checks.
+The tabbed host adapter and OpenGL viewports are stubbed; testing with the
+actual IngeTrazo 0.6.0 build, GPU rendering, and the full extension catalog
+remains necessary. Restart IngeTrazo after replacing the plugin.
+
+Run the checks from this directory with:
+
+```console
+python -B -m unittest discover -s . -p "test_*.py" -v
+```
 
 ## 1.0.6 performance fix
 
@@ -97,14 +123,8 @@ IngeTrazo after replacing the plugin to clear the old containers and filters.
 
 ## Installation
 
-### Method 1: Automatic (1-Click on Windows)
-1. Close IngeTrazo and extract the v1.0.6 release archive.
-2. Double-click `install.bat`.
-3. Launch or restart **IngeTrazo**.
-
-### Method 2: Manual Installation
-1. In IngeTrazo, go to **Extensions → Open plugins folder** (or navigate to `%APPDATA%\ingetrazo\plugins\` on Windows).
-2. Copy `ingetrazo_multiview.py` into this folder.
+1. In IngeTrazo, locate **Extensions → Open plugins folder** (or navigate to `%APPDATA%\ingetrazo\plugins\` on Windows), then close IngeTrazo.
+2. Back up the existing plugin outside that folder, then copy the new `ingetrazo_multiview.py` into it.
 3. Restart IngeTrazo.
 
 > [!NOTE]
@@ -128,29 +148,22 @@ IngeTrazo after replacing the plugin to clear the old containers and filters.
 ## Package Contents
 
 ```text
-IngeTrazo-MultiView-V1-v1.0.2/
+multiview-v1.0.7/
 ├── ingetrazo_multiview.py    # Main extension file (self-contained)
-├── install.bat               # 1-click Windows installer
-├── install.ps1               # PowerShell installer script
 ├── README.md                 # Complete documentation & usage guide
-├── LICENSE                   # GNU General Public License v3.0
-├── DEVELOPMENT.md            # Architecture, checks and screenshot provenance
-├── editor-preview.png        # Verified four-view SUV screenshot (1.0.2)
-├── toolbar.png               # Supplied floating-toolbar screenshot
-└── tests/test_toggle.py       # Native host lifecycle regression test
+├── test_multidocument.py      # Stub-host tab and document lifecycle checks
+└── test_theme_performance.py  # Existing offscreen Qt theme regression checks
 ```
 
 ---
 
 ## Compatibility
 
-The editor screenshot shows the actual 1.0.2 test window; the toolbar close-up
-is the earlier supplied reference. See
-DEVELOPMENT.md for validation details. Install
-only the Python plugin (or use install.bat); keep screenshots, docs and tests
-outside the plugins folder. Back up an older plugin outside that folder first.
+Install only the Python plugin; keep docs and tests outside the plugins folder.
+Back up an older plugin outside that folder first. Version 1.0.7's automated
+checks use stub host adapters; see the validation limits above.
 
-- **IngeTrazo**: 0.5.0 or later (API Version 2).
+- **IngeTrazo**: 0.5.x and 0.6.0 (API Version 2; actual 0.6.0 testing pending).
 - **Operating Systems**: Windows 10/11, Linux, macOS.
 - **Framework**: Python 3.10+, PySide6 (Qt 6.x).
 
@@ -158,4 +171,4 @@ outside the plugins folder. Back up an older plugin outside that folder first.
 
 ## License
 
-This extension is licensed under the **GNU General Public License v3.0 or later** (GPL-3.0-or-later). See `LICENSE` for details.
+This extension is licensed under the **GNU General Public License v3.0 or later** (GPL-3.0-or-later), as recorded in the Python source header.
