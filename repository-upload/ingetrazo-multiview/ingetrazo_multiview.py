@@ -14,6 +14,8 @@ import time
 import traceback
 from pathlib import Path
 
+from shiboken6 import isValid
+
 from PySide6.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QTimer, QObject, QEvent, QCoreApplication
 from PySide6.QtGui import (
     QColor, QPainter, QPen, QBrush, QPolygonF, QIcon, QPixmap,
@@ -30,7 +32,7 @@ from views.viewport import Viewport
 DISPLAY_NAME = "IngeTrazo MultiView"
 TOOLBAR_NAME = "ingetrazo_multiview_toolbar"
 KEY = "ingetrazo_multiview"
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 
 # Diagnostic log. Errors are always written; set INGETRAZO_MULTIVIEW_DEBUG=1
 # to log every event too. It lives in the per-user application data folder on
@@ -921,8 +923,15 @@ class MultiViewController(QObject):
         super().__init__(app.window)
         self.app = app
         self.window = app.window
-        self.main_vp = app.viewport
+        # Bind the layout at activation, since app.viewport follows the active tab.
+        self.main_vp = None
         self.is_active = False
+        self._nav_hook_vp = None
+        self._nav_original = None
+        self._nav_wrapper = None
+        self._layout_scene = None
+        self._layout_history = None
+        self._handling_document_event = False
 
         self.top_vp = None
         self.front_vp = None
@@ -941,9 +950,6 @@ class MultiViewController(QObject):
 
         self._build_native_toolbar()
 
-        # Hook set_nav_mode so Pan tool, Orbit, and Zoom synchronize across all viewports
-        self._hook_nav_mode()
-
         # Global event filter for Double-Space, F4, and Theme Changes
         self._space_filter = DoubleSpaceFilter(self)
         QCoreApplication.instance().installEventFilter(self._space_filter)
@@ -952,10 +958,14 @@ class MultiViewController(QObject):
         # Window event filter to catch runtime theme changes
         self.window.installEventFilter(self)
 
-        try:
-            self.app.on_document_changed(self._on_doc_changed)
-        except Exception:
-            _log(f"Failed to hook on_document_changed: {traceback.format_exc()}")
+        # Older hosts may not expose the close notification.
+        for event_name in ("on_document_changed", "on_document_closed"):
+            register = getattr(self.app, event_name, None)
+            if callable(register):
+                try:
+                    register(self._on_doc_changed)
+                except Exception:
+                    _log(f"Failed to hook {event_name}: {traceback.format_exc()}")
 
     def eventFilter(self, watched, event):
         """Catches runtime theme / palette flips in IngeTrazo."""
@@ -970,18 +980,61 @@ class MultiViewController(QObject):
 
     def _hook_nav_mode(self):
         """Broadcasts set_nav_mode (Pan, Orbit, Zoom) to all viewports when selected from toolbars/menus."""
+        self._unhook_nav_mode()
         try:
-            orig_set_nav_mode = self.main_vp.set_nav_mode
+            source_vp = self.main_vp
+            orig_set_nav_mode = source_vp.set_nav_mode
             def synced_set_nav_mode(mode: str | None):
-                orig_set_nav_mode(mode)
-                if self.is_active and self.container is not None:
+                result = orig_set_nav_mode(mode)
+                if (self.is_active and self.main_vp is source_vp
+                        and self.container is not None):
                     for c in self.container.all_cells:
-                        if c.viewport is not self.main_vp:
+                        if c.viewport is not source_vp:
                             c.viewport.set_nav_mode(mode)
-            self.main_vp.set_nav_mode = synced_set_nav_mode
+                return result
+            self._nav_hook_vp = source_vp
+            self._nav_original = orig_set_nav_mode
+            self._nav_wrapper = synced_set_nav_mode
+            source_vp.set_nav_mode = synced_set_nav_mode
             _log("Successfully hooked main_vp.set_nav_mode for universal Pan/Nav sync.")
         except Exception:
             _log(f"Failed to hook nav mode: {traceback.format_exc()}")
+
+    def _unhook_nav_mode(self):
+        """Restore our method only if another extension has not replaced it."""
+        vp = self._nav_hook_vp
+        if vp is not None and isValid(vp):
+            if vp.set_nav_mode is self._nav_wrapper:
+                vp.set_nav_mode = self._nav_original
+        self._nav_hook_vp = None
+        self._nav_original = None
+        self._nav_wrapper = None
+
+    def _current_viewport(self):
+        """Return the active project's live viewport, including in single view."""
+        try:
+            vp = getattr(self.app, "viewport", None)
+            return vp if vp is not None and isValid(vp) else None
+        except RuntimeError:
+            return None
+
+    def _discard_layout(self):
+        """Release project-specific cells, filters and secondary viewports."""
+        self._unhook_nav_mode()
+        container = self.container
+        if container is not None and isValid(container):
+            # The main viewport belongs to the host, never to this disposable grid.
+            if self.main_vp is not None and isValid(self.main_vp):
+                self.main_vp.removeEventFilter(container.cell_persp.filter)
+            container.hide()
+            container.deleteLater()
+        for vp in (self.top_vp, self.front_vp, self.right_vp):
+            if vp is not None and isValid(vp):
+                vp.deleteLater()
+        self.container = None
+        self.top_vp = self.front_vp = self.right_vp = None
+        self.main_vp = None
+        self._layout_scene = self._layout_history = None
 
     def _build_native_toolbar(self):
         """Constructs a native Qt QToolBar that docks at the top and floats natively."""
@@ -1117,6 +1170,8 @@ class MultiViewController(QObject):
             self.activate()
         if self.is_active and self.container:
             self.container.set_two_views(checked)
+        else:
+            self.update_toolbar_state()
 
     def toggle_maximize(self):
         """Toggles maximize/restore of the active/hovered cell."""
@@ -1138,7 +1193,9 @@ class MultiViewController(QObject):
             name = names.get(view_key, view_key.capitalize())
             cell._apply_view(name, view_key, perspective)
         else:
-            vp = self.main_vp
+            vp = self._current_viewport()
+            if vp is None:
+                return
             vp.camera.perspective = perspective
             vp.camera.set_view(view_key)
             vp.update()
@@ -1147,7 +1204,10 @@ class MultiViewController(QObject):
         """Frames geometry across all active viewports."""
         _log("Zoom Extents All triggered.")
         try:
-            bounds = self.main_vp.scene.bounds()
+            main_vp = self.main_vp if self.is_active else self._current_viewport()
+            if main_vp is None or not isValid(main_vp):
+                return
+            bounds = main_vp.scene.bounds()
             figs = getattr(self.window, "_figure_bounds", lambda: None)()
             if figs is not None:
                 lo, hi = figs
@@ -1157,7 +1217,7 @@ class MultiViewController(QObject):
                 bounds = (lo, hi)
 
             if bounds[0] is not None:
-                targets = [self.main_vp]
+                targets = [main_vp]
                 if self.is_active and self.container is not None:
                     targets = [c.viewport for c in self.container.all_cells if c.isVisible()]
                 for vp in targets:
@@ -1201,17 +1261,23 @@ class MultiViewController(QObject):
         vp.sceneVersionChanged.connect(lambda _v: self._on_sub_version_changed(vp))
         return vp
 
-    def _on_doc_changed(self):
-        """Called whenever the document changes in IngeTrazo."""
-        for vp in (self.top_vp, self.front_vp, self.right_vp):
-            if vp is not None and (vp.scene is not self.main_vp.scene or
-                                   vp.history is not self.main_vp.history):
-                vp.reset_document_caches()
-                vp.scene, vp.history = self.main_vp.scene, self.main_vp.history
-                vp._edges_version = -1
-                vp.last_snap = None
-        if self.is_active and self.container is not None:
-            self.container.update_all_viewports()
+    def _on_doc_changed(self, *args, **kwargs):
+        """Leave MultiView on New/Open, tab switches and document closes.
+
+        Restore the layout's original viewport before resolving app.viewport:
+        the host remembers its project slot even after another tab comes forward.
+        Notifications may arrive after Qt has deleted a closed project's widgets.
+        """
+        if self._handling_document_event:
+            return
+        self._handling_document_event = True
+        try:
+            self.deactivate()
+            self._discard_layout()
+            self._space_filter.last_space_time = 0.0
+            self.update_toolbar_state()
+        finally:
+            self._handling_document_event = False
 
     def _on_sub_version_changed(self, sender_vp: Viewport):
         """Called if a tool in a secondary viewport modifies the scene."""
@@ -1255,9 +1321,21 @@ class MultiViewController(QObject):
     def activate(self):
         if self.is_active:
             return
-        if self.window.centralWidget() is not self.main_vp:
-            self.main_vp.flash_status("Close the current extension workspace before enabling MultiView", 4000)
+        current_vp = self._current_viewport()
+        if current_vp is None:
+            self.update_toolbar_state()
             return
+        if self.window.centralWidget() is not current_vp:
+            current_vp.flash_status("Close the current extension workspace before enabling MultiView", 4000)
+            self.update_toolbar_state()
+            return
+        if (current_vp is not self.main_vp
+                or current_vp.scene is not self._layout_scene
+                or current_vp.history is not self._layout_history):
+            self._discard_layout()
+        self.main_vp = current_vp
+        self._layout_scene = current_vp.scene
+        self._layout_history = current_vp.history
         _log(f"Activating {DISPLAY_NAME}...")
 
         if self.top_vp is None:
@@ -1295,6 +1373,7 @@ class MultiViewController(QObject):
         _log(f"Central widget successfully set to container: {self.window.centralWidget()}")
 
         self.is_active = True
+        self._hook_nav_mode()
         self.main_vp.flash_status(f"{DISPLAY_NAME}: Top, Persp, Front, Right (Double Space / F4)", 3500)
         _log(f"{DISPLAY_NAME} successfully activated!")
 
@@ -1320,6 +1399,16 @@ class MultiViewController(QObject):
         if not self.is_active:
             return
         _log(f"Deactivating {DISPLAY_NAME}...")
+
+        # A close notification may run after the host destroyed the project slot.
+        # Never restore its deleted viewport into the tab that is now in front.
+        if (self.main_vp is None or not isValid(self.main_vp)
+                or self.container is None or not isValid(self.container)):
+            self.is_active = False
+            self._discard_layout()
+            self.update_toolbar_state()
+            return
+        self._unhook_nav_mode()
 
         for vp in (self.main_vp, self.top_vp, self.front_vp, self.right_vp):
             self._prepare_viewport_move(vp)
