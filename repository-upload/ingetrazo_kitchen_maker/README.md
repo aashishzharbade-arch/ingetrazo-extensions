@@ -1,6 +1,6 @@
-# IngeTrazo Kitchen Maker V.1
+# Kitchen Maker V1.1
 
-Version 1.0.2 · Target: IngeTrazo **0.5.7** · English UI · millimetres.
+Version 1.1.0 · Target: IngeTrazo **0.5.7** · English UI · millimetres.
 
 A native Python kitchen-design plugin with parametric cabinets, a categorized
 library, placement tools and cost reports. Full editable source is included
@@ -13,7 +13,7 @@ dependencies.
 2. Download the Python file, or extract the repository ZIP.
 3. Copy **ingetrazo_kitchen_maker.py** into
    `%APPDATA%\ingetrazo\plugins` (create the folder if necessary).
-4. Restart IngeTrazo. Open **Extensions → IngeTrazo Kitchen Maker V.1**,
+4. Restart IngeTrazo. Open **Extensions → Kitchen Maker V1.1**,
    or use its toolbar.
 
 Only that one Python file needs installation. The example model, previews and
@@ -31,12 +31,30 @@ Maker and the architectural toolkit because it has its own filename and data key
   front gap, handles, hinge side and opening amount.
 - Six solid-colour front finishes and three solid-colour worktop finishes.
 - Per-cabinet worktops, front overhang and optional backsplash.
-- Live shaded preview and IngeTrazo Tutorials watermark in the UI only.
-- Seven dedicated toolbar buttons: Library, Add next, Edit, Open/close,
-  Swap hinge, Finishes and Cost report.
+- Live shaded preview with aashishzharbade-arch in the lower-right corner of the UI.
+- Eight toolbar actions: Library, Add next, Edit, Open/close, Swap hinge,
+  Finishes, Cost report and an icon-only Upgrade to Pro button. All eight use
+  redesigned compact vector icons. Hover over an icon for its action name.
 - Movable, floating and dockable toolbar; use its grip to move it. Its visibility
   can be restored from the plugin menu. IngeTrazo manages saved toolbar layout.
 - Undo/Redo, editable recipes stored in `.igz`, and CSV cost reports.
+
+## Upgrade to Pro
+
+Click the **up-arrow icon** at the end of the toolbar (hover: **Upgrade to Pro**),
+choose the extension menu item, or use **Upgrade to Pro** at the lower left of
+the cabinet editor. Your default browser opens:
+
+[Kitchen Maker Pro on Gumroad](https://ingetrazotutorials.gumroad.com/l/kitchen-maker-ingetrazo)
+
+This is an optional product-page link. It makes no startup request and does not
+purchase, download or activate Pro automatically. If a browser cannot open,
+the dialog displays the address to copy. The free cabinet tools keep working.
+
+1.1.0 is a small update to the free edition; it is separate from the Pro
+releases. When installing Pro, follow its installation/backup instructions:
+the free file and Pro package use the same plugin module name and should not
+both remain active in the plugins folder.
 
 ## Create and place a cabinet
 
@@ -100,6 +118,10 @@ cost report, not a supplier invoice or a CNC cutting list.
 
 ## Files and limitations
 
+The example assets listed below remain in the existing GitHub folder. The
+1.1.0 update archive contains the plugin, documentation and updated UI previews.
+
+
 - `example-kitchen.igz`: seven editable cabinets; open in IngeTrazo to try them.
 - `example-cost-report.csv`: the example report, with zero prices ready to fill.
 - `example-kitchen.png`, `editor-preview.png`, `toolbar.png`: visual previews.
@@ -110,7 +132,7 @@ carcasses, lift-up fronts, appliance/sink models, textured materials, interactiv
 resize handles, collision checking, cut lists or hardware/manufacturing details.
 Glass is a simple transparent panel and hinges are conceptual pivots.
 
-Validated with **76 automated tests** against IngeTrazo 0.5.7 source: category filtering,
+Historical 1.0.2 validation: **76 automated tests** against IngeTrazo 0.5.7 source: category filtering,
 preserving custom settings when opening the editor, closed solid
 geometry, opening/closing, placement, updates, copying, persistence, Undo/Redo,
 reports, plugin discovery and toolbar flags. The actual IngeTrazo MainWindow
@@ -123,4 +145,4 @@ License: GPL-3.0-or-later; see LICENSE.
 ## Publication preparation
 
 The owner confirmed IngeTrazo 0.5.7 as the installed test version.
-The publishing preparation checks syntax, packaging and catalog metadata; it does not rerun the historical test suites described above.
+For 1.1.0, offscreen Qt click checks verified the exact product URL, no startup browser request, toolbar/menu/editor routing, unchanged editor parameters and scene, use without a cabinet selection and the browser-failure message. AST comparison confirmed that cabinet geometry, recipes, placement and reports were not modified. These checks used the 0.5.7 source API; the historical 76-test suite above was not rerun. Actual OS browser launching was intercepted; installed desktop GUI and live product-page availability remain unverified.

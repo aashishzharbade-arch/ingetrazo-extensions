@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""IngeTrazo Kitchen Maker V.1, native plugin for IngeTrazo 0.5.7.
+"""Kitchen Maker V1.1, native plugin for IngeTrazo 0.5.7.
 
 Native parametric geometry, Qt interface and procedurally drawn toolbar icons.
 Recipe dimensions are millimetres, generated model coordinates are metres.
@@ -12,8 +12,8 @@ import math
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP
 
-from PySide6.QtCore import Qt, QPointF, QTimer, QSize
-from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPen, QPixmap, QPolygonF, QVector3D, QMatrix4x4
+from PySide6.QtCore import Qt, QPointF, QTimer, QSize, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QIcon, QImage, QPainter, QPen, QPixmap, QPolygonF, QVector3D, QMatrix4x4
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPushButton, QScrollArea, QSpinBox, QTabWidget, QTableWidget,
@@ -24,8 +24,9 @@ from core.history import Command, InsertGroupCommand
 from tools.place_group import PlaceGroupTool
 
 KEY = "ingetrazo_kitchen_maker"
-VERSION = "1.0.2"
-TITLE = "IngeTrazo Kitchen Maker V.1"
+VERSION = "1.1.0"
+TITLE = "Kitchen Maker V1.1"
+PRO_URL = "https://ingetrazotutorials.gumroad.com/l/kitchen-maker-ingetrazo"
 FAMILIES = ("Base", "Wall", "Tall", "High", "Base corner", "Wall corner", "Filler")
 STYLES = ("Single door", "Double doors", "Drawers", "Drawer + doors", "Open shelves", "Glass doors", "Appliance niche", "Blind left", "Blind right")
 FINISHES = {"Warm white": (0.91, 0.90, 0.86), "Graphite": (0.20, 0.24, 0.28),
@@ -436,7 +437,7 @@ class Preview(QWidget):
             img=QImage(pixels.data,width,height,width*3,QImage.Format_RGB888)
             painter.drawImage(0,0,img)
         painter.setPen(QColor("#90a9c0"))
-        painter.drawText(self.rect().adjusted(12,0,-12,-12),Qt.AlignBottom|Qt.AlignRight,"IngeTrazo Tutorials")
+        painter.drawText(self.rect().adjusted(12,0,-12,-12),Qt.AlignBottom|Qt.AlignRight,"aashishzharbade-arch")
 
 
 class Editor(QDialog):
@@ -451,7 +452,7 @@ class Editor(QDialog):
         self.setWindowTitle(TITLE+ (" — Edit cabinet" if target else " — Cabinet library"))
         self.resize(1000,740)
         outer=QVBoxLayout(self)
-        outer.addWidget(QLabel("<h2>IngeTrazo Kitchen Maker <small>V.1</small></h2>Parametric cabinets · Dimensions in millimetres"))
+        outer.addWidget(QLabel(f"<h2>{TITLE}</h2>Parametric cabinets · Dimensions in millimetres"))
         body=QHBoxLayout();outer.addLayout(body,1)
         tabs=QTabWidget();body.addWidget(tabs,1)
         right=QVBoxLayout();body.addLayout(right,1)
@@ -528,6 +529,9 @@ class Editor(QDialog):
             tabs.setCurrentIndex(1)
         if beside: self.mode.setCurrentIndex(2)
         buttons=QHBoxLayout();outer.addLayout(buttons)
+        upgrade=QPushButton("Upgrade to Pro");upgrade.setIcon(toolbar_icon("Upgrade to Pro"))
+        upgrade.setToolTip("View Kitchen Maker Pro on Gumroad in your default browser")
+        upgrade.clicked.connect(lambda checked=False:open_upgrade(self));buttons.addWidget(upgrade)
         buttons.addStretch()
         self.apply_button=QPushButton("Update cabinet" if target else "Create cabinet")
         self.apply_button.clicked.connect(self.apply);buttons.addWidget(self.apply_button)
@@ -653,27 +657,60 @@ class Report(QDialog):
         except OSError as e: QMessageBox.warning(self,TITLE,str(e))
 
 
+def open_upgrade(parent=None):
+    """Open the supplied product page only after an explicit upgrade click."""
+    if not QDesktopServices.openUrl(QUrl(PRO_URL)):
+        QMessageBox.warning(parent,TITLE,"Could not open your browser. Copy this address to view Kitchen Maker Pro:\n"+PRO_URL)
+
+
 def toolbar_icon(kind):
-    pix=QPixmap(64,64);pix.fill(Qt.transparent)
+    """Compact original vector icons with consistent outlines and colour accents."""
+    pix=QPixmap(128,128);pix.setDevicePixelRatio(2);pix.fill(Qt.transparent)
     painter=QPainter(pix);painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(QPen(QColor("#163d5c"),3));painter.setBrush(QColor("#57b7ea"))
-    if kind in ("Library","Add next","Edit"):
-        painter.drawRect(10,15,40,38);painter.drawLine(30,15,30,53)
-        painter.setPen(QPen(QColor("#ffffff"),3));painter.drawLine(25,27,25,39);painter.drawLine(35,27,35,39)
-        if kind=="Add next":
-            painter.setPen(QPen(QColor("#ed9b38"),5));painter.drawLine(46,8,46,26);painter.drawLine(37,17,55,17)
-        elif kind=="Edit":
-            painter.setPen(QPen(QColor("#ed9b38"),6));painter.drawLine(33,52,55,30)
+    navy="#23465c";blue="#45a8dc";pale="#d8effa";gold="#f2b450"
+    def pen(colour=navy,width=3):painter.setPen(QPen(QColor(colour),width,Qt.SolidLine,Qt.RoundCap,Qt.RoundJoin))
+    def line(x,y,X,Y,colour=navy,width=3):pen(colour,width);painter.drawLine(QPointF(x,y),QPointF(X,Y))
+    def rect(x,y,w,h,colour,radius=3):
+        pen();painter.setBrush(QColor(colour));painter.drawRoundedRect(x,y,w,h,radius,radius)
+    def polygon(points,colour):
+        pen();painter.setBrush(QColor(colour));painter.drawPolygon(QPolygonF([QPointF(x,y) for x,y in points]))
+    def cabinet(x=9,y=12,w=46,h=43):
+        rect(x,y,w,h,blue);line(x,y+8,x+w,y+8)
+        line(x+w/2,y+8,x+w/2,y+h)
+        line(x+w/2-5,y+18,x+w/2-5,y+26,"#ffffff")
+        line(x+w/2+5,y+18,x+w/2+5,y+26,"#ffffff")
+    if kind=="Library":cabinet()
+    elif kind=="Add next":
+        cabinet(7,19,37,36)
+        pen();painter.setBrush(QColor(gold));painter.drawEllipse(QPointF(48,16),11,11)
+        line(48,10,48,22);line(42,16,54,16)
+    elif kind=="Edit":
+        cabinet(7,13,36,41)
+        polygon([(28,48),(47,27),(55,35),(36,55)],gold)
+        polygon([(27,56),(28,48),(36,55)],"#fff3d5")
+        line(44,30,52,38,navy,2)
     elif kind=="Open / close":
-        painter.drawRect(8,13,30,40);painter.setBrush(QColor("#ffcb7c"));painter.drawPolygon(QPolygonF([QPointF(38,13),QPointF(55,24),QPointF(55,61),QPointF(38,53)]))
+        rect(8,12,31,42,blue)
+        polygon([(29,12),(55,21),(55,55),(29,54)],"#fff3d5")
+        line(47,31,47,41,navy,3)
     elif kind=="Swap hinge":
-        painter.drawLine(8,32,56,32);painter.drawLine(8,32,22,18);painter.drawLine(56,32,42,46)
+        rect(15,16,34,34,pale)
+        rect(11,21,8,10,gold,2);rect(45,35,8,10,gold,2)
+        line(24,8,51,8);line(51,8,45,3);line(51,8,45,13)
+        line(40,58,13,58);line(13,58,19,53);line(13,58,19,63)
+    elif kind=="Upgrade to Pro":
+        rect(8,8,48,48,pale,10)
+        polygon([(32,14),(49,31),(39,31),(39,48),(25,48),(25,31),(15,31)],gold)
     elif kind=="Finishes":
-        for x,c in ((6,"#e0c3a0"),(24,"#587e64"),(42,"#438db9")):
-            painter.setBrush(QColor(c));painter.drawRect(x,15,16,36)
+        rect(8,20,22,32,blue);rect(21,10,22,32,"#8eb8a2");rect(34,23,22,32,gold)
+        line(13,27,19,27,"#ffffff",2);line(26,17,32,17,"#ffffff",2);line(39,30,45,30,"#ffffff",2)
     else:
-        painter.setBrush(QColor("#f0ece1"));painter.drawRect(13,8,38,48)
-        for y in (20,30,40): painter.drawLine(20,y,44,y)
+        polygon([(11,7),(35,7),(45,17),(45,55),(11,55)],"#ffffff")
+        polygon([(35,7),(35,17),(45,17)],pale)
+        rect(17,24,22,23,pale,1);line(27,24,27,47,navy,2)
+        line(17,32,39,32,navy,2);line(17,40,39,40,navy,2)
+        pen();painter.setBrush(QColor(gold));painter.drawEllipse(QPointF(47,47),11,11)
+        line(47,40,47,54,navy,2);line(43,43,51,43,navy,2);line(43,50,51,50,navy,2)
     painter.end();return QIcon(pix)
 
 
@@ -686,6 +723,7 @@ def setup(app):
         dialog.show()
     def action(name):
         try:
+            if name=="Upgrade to Pro":open_upgrade(app.window);return
             if app.scene.edit_group is not None:
                 raise ValueError("Close the group you are editing first.")
             targets=selected(app.scene)
@@ -722,6 +760,11 @@ def setup(app):
         a.setToolTip(f"Kitchen Maker — {name}")
         a.triggered.connect(lambda checked=False,n=name:action(n))
         menu.addAction(a)
+    toolbar.addSeparator();menu.addSeparator()
+    upgrade=toolbar.addAction(toolbar_icon("Upgrade to Pro"),"Upgrade to Pro")
+    upgrade.setToolTip("Upgrade to Pro — view Kitchen Maker Pro on Gumroad")
+    upgrade.triggered.connect(lambda checked=False:action("Upgrade to Pro"));menu.addAction(upgrade)
+    toolbar.widgetForAction(upgrade).setToolButtonStyle(Qt.ToolButtonIconOnly)
     app.window.addToolBar(Qt.TopToolBarArea,toolbar)
     menu.addSeparator();menu.addAction(toolbar.toggleViewAction())
     def context(menu,selection):

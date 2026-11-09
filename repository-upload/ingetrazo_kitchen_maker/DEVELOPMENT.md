@@ -36,3 +36,28 @@ user; modeling actions use the host document and command history.
 Version 1.0.2 changes packaging/provenance documentation only, plus the internal
 version number. The categorized library from 1.0.1 remains available. It is a
 source distribution; publication to a public Git repository is a separate step.
+
+## 1.0.3 upgrade-link patch (2026-11-09)
+
+Adds a user-clicked Upgrade to Pro link in the toolbar/menu and editor footer.
+The fixed Gumroad address is opened by Qt's desktop URL handler. No request is
+made at startup, and no purchase, activation, licence check or auto-update runs.
+The original cabinet, placement, geometry and report functions are unchanged.
+Offscreen Qt checks verified click routing, unchanged scene/editor parameters,
+operation without a selection/in an edit context, and the browser-failure message.
+Actual OS browser launching was intercepted for verification; the installed
+desktop app and live Gumroad page were not verified by those checks.
+
+The final UI revision uses an icon-only upgrade toolbar button (action/menu
+name and tooltip retained) and eight redesigned procedural vector icons with
+consistent navy outlines and blue/gold accents. Cabinet editor button text
+remains visible. The icon artwork is embedded, with no external asset dependency.
+
+## Kitchen Maker V1.1 (1.1.0)
+
+Renames the display title, menu, toolbar and editor header to Kitchen Maker V1.1.
+The stable plugin data key and toolbar object name are retained for existing
+projects and saved layouts. The icon-only upgrade button and redesigned icons
+are preserved. Target host metadata remains 0.5.7.
+The lower-right preview watermark is aashishzharbade-arch; only this display
+string changes in the preview renderer.
