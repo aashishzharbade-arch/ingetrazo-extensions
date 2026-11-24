@@ -34,5 +34,15 @@
     "static_review_notes": {
       "ingetrazo_bevel": []
     }
-  }
+  },
+    {
+  "id": "game_play",
+  "name": "Game Play",
+  "version": "1.0.0",
+  "tag": "game_play-v1.0.0",
+  "bytes": 8158966,
+  "sha256": "3c61500f6d8e59dfd2168a734e859206e529bab54879e8de7b3d19cfcb1013ad",
+  "download": "https://github.com/aashishzharbade-arch/ingetrazo-extensions/releases/download/game_play-v1.0.0/Game-Play-1.0.0.zip"
+    }
+}
 ]
