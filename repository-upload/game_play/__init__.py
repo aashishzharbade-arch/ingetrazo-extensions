@@ -258,7 +258,7 @@ class Session(QWidget):
         p.setPen(QPen(QColor('#88969a'),1));p.setBrush(QColor(18,27,32,225));p.drawRoundedRect(box,7,7)
         p.setPen(QColor('#f0f4f4'))
         p.drawText(box.adjusted(10,4,-9,0),Qt.AlignTop|Qt.AlignLeft,'INSIDE' if self.inside else 'OUTSIDE')
-        p.drawText(box.adjusted(10,4,-9,0),Qt.AlignTop|Qt.AlignRight,'N â†‘')
+        p.drawText(box.adjusted(10,4,-9,0),Qt.AlignTop|Qt.AlignRight,'N \u2191')
         region=box.adjusted(5,24,-5,-5);p.setClipRect(region)
         center=region.center();px=w/24
         p.setPen(QPen(QColor('#cad2cf'),1.8))
